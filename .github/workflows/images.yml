@@ -1,0 +1,48 @@
+name: images
+
+# Testes unitários primeiro; somente se passarem, publica web e worker no GHCR
+# com a tag igual ao SHA do commit (nunca "latest").
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - name: Unit tests
+        run: dotnet test sources/ExpenseHub.slnx -c Release
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: [web, worker]
+    steps:
+      - uses: actions/checkout@v6
+      - name: Lowercase owner
+        id: owner
+        run: echo "name=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/${{ matrix.component }}.Dockerfile
+          push: true
+          build-args: GIT_COMMIT=${{ github.sha }}
+          tags: ghcr.io/${{ steps.owner.outputs.name }}/expensehub-${{ matrix.component }}:${{ github.sha }}
+          labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}

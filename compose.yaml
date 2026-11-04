@@ -1,0 +1,61 @@
+# ExpenseHub CP3 — executa as IMAGENS PUBLICADAS (web + worker) com RabbitMQ.
+# Configure .env a partir de .env.example antes de subir. Nunca use "latest".
+name: expensehub
+
+services:
+  rabbitmq:
+    image: rabbitmq:4-management
+    hostname: expensehub-rabbitmq   # nome fixo: o RabbitMQ guarda dados por nome de nó
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?defina RABBITMQ_USER no .env}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?defina RABBITMQ_PASSWORD no .env}
+    ports:
+      - "5672:5672"
+      - "15672:15672"   # painel de gerenciamento (E02/E03)
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  web:
+    image: ${WEB_IMAGE:?defina WEB_IMAGE no .env com a tag do commit}
+    environment:
+      ConnectionStrings__ExpenseHub: "Data Source=/data/expensehub.db;Default Timeout=30"
+      DataProtection__KeysPath: /data/keys
+      RabbitMq__HostName: rabbitmq
+      RabbitMq__UserName: ${RABBITMQ_USER}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
+      Seed__AdminEmail: ${ADMIN_EMAIL:?defina ADMIN_EMAIL no .env}
+      Seed__AdminPassword: ${ADMIN_PASSWORD:?defina ADMIN_PASSWORD no .env}
+      ASPNETCORE_ENVIRONMENT: Development   # expõe /openapi/v1.json para testes
+    ports:
+      - "8080:8080"
+    volumes:
+      - app-data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  worker:
+    image: ${WORKER_IMAGE:?defina WORKER_IMAGE no .env com a tag do commit}
+    environment:
+      ConnectionStrings__ExpenseHub: "Data Source=/data/expensehub.db;Default Timeout=30"
+      RabbitMq__HostName: rabbitmq
+      RabbitMq__UserName: ${RABBITMQ_USER}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
+      ReportProcessing__MaxAttempts: "3"
+      ReportProcessing__TransientRetryDelaySeconds: "5"
+    volumes:
+      - app-data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      web:
+        condition: service_started
+
+volumes:
+  app-data:        # SQLite compartilhado + chaves de Data Protection (tokens sobrevivem a recriações)
+  rabbitmq-data:   # fila durável e mensagens persistentes

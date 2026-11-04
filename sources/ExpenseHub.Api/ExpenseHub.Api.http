@@ -1,0 +1,319 @@
+# ExpenseHub — chamadas do CP2 e CP3 (Visual Studio 2022 17.12+ ou VS Code REST Client).
+# Tokens NÃO ficam salvos aqui: são lidos da resposta do login (request variables).
+# Execute de cima para baixo. Senhas de teste: troque se quiser, mas nunca use as reais.
+
+@host = http://localhost:8080
+@pwd = Teste@12345
+@adminEmail = admin@expensehub.local
+# Senha do Admin = ADMIN_PASSWORD do seu .env. Substitua só localmente e NÃO faça commit dela.
+@adminPwd = SENHA_DO_ADMIN_DO_ENV
+
+GET {{host}}/health
+
+### ───────────── 1. Cadastro (público, sem roles) ─────────────
+POST {{host}}/register
+Content-Type: application/json
+
+{ "email": "alice@expensehub.local", "password": "{{pwd}}" }
+
+###
+POST {{host}}/register
+Content-Type: application/json
+
+{ "email": "bob@expensehub.local", "password": "{{pwd}}" }
+
+###
+POST {{host}}/register
+Content-Type: application/json
+
+{ "email": "auditor@expensehub.local", "password": "{{pwd}}" }
+
+###
+POST {{host}}/register
+Content-Type: application/json
+
+{ "email": "approver@expensehub.local", "password": "{{pwd}}" }
+
+###
+POST {{host}}/register
+Content-Type: application/json
+
+{ "email": "finance@expensehub.local", "password": "{{pwd}}" }
+
+### ───────────── 2. Admin atribui roles ─────────────
+# @name adminLogin
+POST {{host}}/login
+Content-Type: application/json
+
+{ "email": "{{adminEmail}}", "password": "{{adminPwd}}" }
+
+###
+# @name users
+GET {{host}}/api/admin/users
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
+
+### Copie os ids da resposta acima para as variáveis abaixo
+@aliceId = COLE_ID_ALICE
+@bobId = COLE_ID_BOB
+@auditorId = COLE_ID_AUDITOR
+@approverId = COLE_ID_APPROVER
+@financeId = COLE_ID_FINANCE
+
+PUT {{host}}/api/admin/users/{{aliceId}}/roles
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "roles": ["Employee"] }
+
+###
+PUT {{host}}/api/admin/users/{{bobId}}/roles
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "roles": ["Employee"] }
+
+###
+PUT {{host}}/api/admin/users/{{auditorId}}/roles
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "roles": ["Auditor"] }
+
+###
+PUT {{host}}/api/admin/users/{{approverId}}/roles
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "roles": ["Approver"] }
+
+###
+PUT {{host}}/api/admin/users/{{financeId}}/roles
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "roles": ["Finance"] }
+
+### ───────────── 3. Logins (depois de alterar roles) ─────────────
+# @name alice
+POST {{host}}/login
+Content-Type: application/json
+
+{ "email": "alice@expensehub.local", "password": "{{pwd}}" }
+
+###
+# @name bob
+POST {{host}}/login
+Content-Type: application/json
+
+{ "email": "bob@expensehub.local", "password": "{{pwd}}" }
+
+###
+# @name auditor
+POST {{host}}/login
+Content-Type: application/json
+
+{ "email": "auditor@expensehub.local", "password": "{{pwd}}" }
+
+###
+# @name approver
+POST {{host}}/login
+Content-Type: application/json
+
+{ "email": "approver@expensehub.local", "password": "{{pwd}}" }
+
+###
+# @name finance
+POST {{host}}/login
+Content-Type: application/json
+
+{ "email": "finance@expensehub.local", "password": "{{pwd}}" }
+
+### ───────────── 4. Dados conhecidos (tabela da apostila) ─────────────
+# Alice: 100 Approved, 50 Approved, 25 Paid (setembro) e 500 Paid (outubro, fora do período)
+# Bob:   200 Approved (setembro)
+# @name e1
+POST {{host}}/api/expenses
+Authorization: Bearer {{alice.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "description": "Taxi para cliente A", "amount": 100.00, "expenseDate": "2026-09-05", "categoryId": 1 }
+
+###
+# @name e2
+POST {{host}}/api/expenses
+Authorization: Bearer {{alice.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "description": "Almoco com cliente B", "amount": 50.00, "expenseDate": "2026-09-10", "categoryId": 2 }
+
+###
+# @name e3
+POST {{host}}/api/expenses
+Authorization: Bearer {{alice.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "description": "Material de escritorio", "amount": 25.00, "expenseDate": "2026-09-15", "categoryId": 4 }
+
+###
+# @name e4
+POST {{host}}/api/expenses
+Authorization: Bearer {{bob.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "description": "Hotel em viagem de vendas", "amount": 200.00, "expenseDate": "2026-09-20", "categoryId": 3 }
+
+###
+# @name e5
+POST {{host}}/api/expenses
+Authorization: Bearer {{alice.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "description": "Passagem aerea de outubro", "amount": 500.00, "expenseDate": "2026-10-02", "categoryId": 1 }
+
+### Envios (proprietário)
+POST {{host}}/api/expenses/{{e1.response.body.$.id}}/submit
+Authorization: Bearer {{alice.response.body.$.accessToken}}
+
+###
+POST {{host}}/api/expenses/{{e2.response.body.$.id}}/submit
+Authorization: Bearer {{alice.response.body.$.accessToken}}
+
+###
+POST {{host}}/api/expenses/{{e3.response.body.$.id}}/submit
+Authorization: Bearer {{alice.response.body.$.accessToken}}
+
+###
+POST {{host}}/api/expenses/{{e4.response.body.$.id}}/submit
+Authorization: Bearer {{bob.response.body.$.accessToken}}
+
+###
+POST {{host}}/api/expenses/{{e5.response.body.$.id}}/submit
+Authorization: Bearer {{alice.response.body.$.accessToken}}
+
+### Aprovações
+POST {{host}}/api/expenses/{{e1.response.body.$.id}}/approve
+Authorization: Bearer {{approver.response.body.$.accessToken}}
+
+###
+POST {{host}}/api/expenses/{{e2.response.body.$.id}}/approve
+Authorization: Bearer {{approver.response.body.$.accessToken}}
+
+###
+POST {{host}}/api/expenses/{{e3.response.body.$.id}}/approve
+Authorization: Bearer {{approver.response.body.$.accessToken}}
+
+###
+POST {{host}}/api/expenses/{{e4.response.body.$.id}}/approve
+Authorization: Bearer {{approver.response.body.$.accessToken}}
+
+###
+POST {{host}}/api/expenses/{{e5.response.body.$.id}}/approve
+Authorization: Bearer {{approver.response.body.$.accessToken}}
+
+### Pagamentos (e3 e e5)
+POST {{host}}/api/expenses/{{e3.response.body.$.id}}/pay
+Authorization: Bearer {{finance.response.body.$.accessToken}}
+
+###
+POST {{host}}/api/expenses/{{e5.response.body.$.id}}/pay
+Authorization: Bearer {{finance.response.body.$.accessToken}}
+
+### ───────────── 5. CP3 — Relatórios ─────────────
+# E01: Alice solicita Mine → 202 + Location. Esperado ao concluir: 3 reembolsos, R$ 175,00
+# @name repMine
+POST {{host}}/api/reports
+Authorization: Bearer {{alice.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "fromDate": "2026-09-01", "toDate": "2026-09-30", "scope": "Mine" }
+
+### Acompanhar até Completed
+GET {{host}}/api/reports/{{repMine.response.body.$.id}}
+Authorization: Bearer {{alice.response.body.$.accessToken}}
+
+### Listar (somente próprias)
+GET {{host}}/api/reports
+Authorization: Bearer {{alice.response.body.$.accessToken}}
+
+### Baixar Excel (200 quando Completed; 409 se ainda Pending/Processing)
+GET {{host}}/api/reports/{{repMine.response.body.$.id}}/excel
+Authorization: Bearer {{alice.response.body.$.accessToken}}
+
+### Auditor solicita Global. Esperado: 4 reembolsos, R$ 375,00
+# @name repGlobal
+POST {{host}}/api/reports
+Authorization: Bearer {{auditor.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "fromDate": "2026-09-01", "toDate": "2026-09-30", "scope": "Global" }
+
+###
+GET {{host}}/api/reports/{{repGlobal.response.body.$.id}}
+Authorization: Bearer {{auditor.response.body.$.accessToken}}
+
+### Período vazio → Completed com cinco estados zerados
+# @name repEmpty
+POST {{host}}/api/reports
+Authorization: Bearer {{bob.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "fromDate": "2025-01-01", "toDate": "2025-01-31", "scope": "Mine" }
+
+###
+GET {{host}}/api/reports/{{repEmpty.response.body.$.id}}
+Authorization: Bearer {{bob.response.body.$.accessToken}}
+
+### ───────────── 6. Casos negativos (E04) ─────────────
+# 401 — sem autenticação
+GET {{host}}/api/reports
+
+### 400 — fromDate > toDate
+POST {{host}}/api/reports
+Authorization: Bearer {{alice.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "fromDate": "2026-09-30", "toDate": "2026-09-01", "scope": "Mine" }
+
+### 400 — escopo inválido
+POST {{host}}/api/reports
+Authorization: Bearer {{alice.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "fromDate": "2026-09-01", "toDate": "2026-09-30", "scope": "Todos" }
+
+### 403 — Employee solicita Global
+POST {{host}}/api/reports
+Authorization: Bearer {{bob.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "fromDate": "2026-09-01", "toDate": "2026-09-30", "scope": "Global" }
+
+### 403 — Auditor (sem Employee) solicita Mine
+POST {{host}}/api/reports
+Authorization: Bearer {{auditor.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "fromDate": "2026-09-01", "toDate": "2026-09-30", "scope": "Mine" }
+
+### 404 — Bob consulta relatório da Alice
+GET {{host}}/api/reports/{{repMine.response.body.$.id}}
+Authorization: Bearer {{bob.response.body.$.accessToken}}
+
+### 404 — Bob baixa Excel da Alice
+GET {{host}}/api/reports/{{repMine.response.body.$.id}}/excel
+Authorization: Bearer {{bob.response.body.$.accessToken}}
+
+### 404 — Auditor consulta relatório criado pela Alice
+GET {{host}}/api/reports/{{repMine.response.body.$.id}}
+Authorization: Bearer {{auditor.response.body.$.accessToken}}
+
+### 404 — Auditor baixa Excel criado pela Alice
+GET {{host}}/api/reports/{{repMine.response.body.$.id}}/excel
+Authorization: Bearer {{auditor.response.body.$.accessToken}}
+
+### 403 — Admin (sem Employee/Auditor) não solicita relatório
+POST {{host}}/api/reports
+Authorization: Bearer {{adminLogin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "fromDate": "2026-09-01", "toDate": "2026-09-30", "scope": "Global" }
