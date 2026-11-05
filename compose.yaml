@@ -8,7 +8,7 @@ services:
     hostname: expensehub-rabbitmq   # nome fixo: o RabbitMQ guarda dados por nome de nó
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?defina RABBITMQ_USER no .env}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?defina RABBITMQ_PASSWORD no .env}
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_PASSWORD}"
     ports:
       - "5672:5672"
       - "15672:15672"   # painel de gerenciamento (E02/E03)
@@ -27,9 +27,9 @@ services:
       DataProtection__KeysPath: /data/keys
       RabbitMq__HostName: rabbitmq
       RabbitMq__UserName: ${RABBITMQ_USER}
-      RabbitMq__Password: ${RABBITMQ_PASSWORD}
+      RabbitMq__Password: "${RABBITMQ_PASSWORD:?defina RABBITMQ_PASSWORD no .env}"
       Seed__AdminEmail: ${ADMIN_EMAIL:?defina ADMIN_EMAIL no .env}
-      Seed__AdminPassword: ${ADMIN_PASSWORD:?defina ADMIN_PASSWORD no .env}
+      Seed__AdminPassword: "${ADMIN_PASSWORD:?defina ADMIN_PASSWORD no .env}"
       ASPNETCORE_ENVIRONMENT: Development   # expõe /openapi/v1.json para testes
     ports:
       - "8080:8080"
@@ -45,7 +45,7 @@ services:
       ConnectionStrings__ExpenseHub: "Data Source=/data/expensehub.db;Default Timeout=30"
       RabbitMq__HostName: rabbitmq
       RabbitMq__UserName: ${RABBITMQ_USER}
-      RabbitMq__Password: ${RABBITMQ_PASSWORD}
+      RabbitMq__Password: "${RABBITMQ_PASSWORD}"
       ReportProcessing__MaxAttempts: "3"
       ReportProcessing__TransientRetryDelaySeconds: "5"
     volumes:
