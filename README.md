@@ -23,7 +23,7 @@ A API registra o pedido de relatório e devolve a resposta na hora. Um **worker 
 |---|---|
 | Victor Mattenhauer Lopes Capp | 555753 |
 | Artur Alves Tenca | 555171 |
-| Igor Brunelli Ralo | 555035 |
+| Igor Brunelli Ralo | 555035|
 
 ## Entrega
 
